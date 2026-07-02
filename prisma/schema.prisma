@@ -1,0 +1,69 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+
+  solvedPuzzles SolvedPuzzle[]
+  folders       Folder[]
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id])
+  puzzles FolderPuzzle[]
+}
+
+model FolderPuzzle {
+  id        String   @id @default(cuid())
+  folderId  String
+  puzzleId  String
+  createdAt DateTime @default(now())
+
+  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, puzzleId])
+}
+
+model Puzzle {
+  id         String   @id @default(cuid())
+  fen        String
+  moves      String
+  difficulty String
+  category   String   @default("fork")
+  mateIn     String?
+  title      String
+  createdAt  DateTime @default(now())
+
+  solvedPuzzles SolvedPuzzle[]
+  folderPuzzles FolderPuzzle[]
+}
+
+model SolvedPuzzle {
+  id        String   @id @default(cuid())
+  userId    String
+  puzzleId  String
+  solvedAt  DateTime @default(now())
+  attempts  Int      @default(1)
+
+  user   User   @relation(fields: [userId], references: [id])
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id])
+
+  @@unique([userId, puzzleId])
+}
