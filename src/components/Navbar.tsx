@@ -19,8 +19,8 @@ export function Navbar() {
   }, [session]);
 
   return (
-    <nav className="bg-[#16213e] border-b border-[#0f3460] px-6 py-3 flex items-center justify-between">
-      <Link href="/" className="text-xl font-bold text-[#e94560]">
+    <nav className="bg-[#262421] border-b border-[#3d3a37] px-6 py-3 flex items-center justify-between">
+      <Link href="/" className="text-xl font-bold text-[#81b64c]">
         ♟ 체스 퍼즐
       </Link>
       <div className="flex items-center gap-4 text-sm">
@@ -43,7 +43,7 @@ export function Navbar() {
             <span className="text-gray-400">{session.user?.name}</span>
             <button
               onClick={() => signOut()}
-              className="bg-[#e94560] hover:bg-red-600 text-white px-3 py-1 rounded"
+              className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white px-3 py-1 rounded"
             >
               로그아웃
             </button>
@@ -55,7 +55,7 @@ export function Navbar() {
             </Link>
             <Link
               href="/register"
-              className="bg-[#e94560] hover:bg-red-600 text-white px-3 py-1 rounded"
+              className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white px-3 py-1 rounded"
             >
               회원가입
             </Link>

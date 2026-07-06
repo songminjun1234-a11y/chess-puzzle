@@ -23,13 +23,13 @@ export default function Home() {
       <div className="flex gap-4 mb-10">
         <Link
           href="/puzzle"
-          className="bg-[#e94560] hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+          className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white px-6 py-3 rounded-lg font-semibold transition"
         >
           퍼즐 풀기 시작
         </Link>
         <Link
           href="/ranking"
-          className="border border-[#0f3460] hover:border-[#e94560] text-gray-300 hover:text-white px-6 py-3 rounded-lg font-semibold transition"
+          className="border border-[#3d3a37] hover:border-[#81b64c] text-gray-300 hover:text-white px-6 py-3 rounded-lg font-semibold transition"
         >
           랭킹 보기
         </Link>
@@ -37,10 +37,10 @@ export default function Home() {
 
       <div className="w-full max-w-md">
         <h2 className="text-lg font-bold text-white mb-3 text-left">🏆 랭킹</h2>
-        <div className="bg-[#16213e] border border-[#0f3460] rounded-xl overflow-hidden">
+        <div className="bg-[#262421] border border-[#3d3a37] rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#0f3460] text-gray-400 text-sm">
+              <tr className="border-b border-[#3d3a37] text-gray-400 text-sm">
                 <th className="py-2 px-4 text-left">순위</th>
                 <th className="py-2 px-4 text-left">이름</th>
                 <th className="py-2 px-4 text-right">해결</th>
@@ -57,13 +57,13 @@ export default function Home() {
               {ranking.slice(0, 10).map((entry, i) => (
                 <tr
                   key={entry.id}
-                  className="border-b border-[#0f3460] last:border-0 hover:bg-[#0f3460]/30 transition"
+                  className="border-b border-[#3d3a37] last:border-0 hover:bg-[#3d3a37]/30 transition"
                 >
                   <td className="py-2 px-4 font-bold text-gray-300 text-sm">
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
                   </td>
                   <td className="py-2 px-4 text-white text-sm">{entry.name}</td>
-                  <td className="py-2 px-4 text-right text-[#e94560] font-semibold text-sm">
+                  <td className="py-2 px-4 text-right text-[#81b64c] font-semibold text-sm">
                     {entry.solved}
                   </td>
                 </tr>

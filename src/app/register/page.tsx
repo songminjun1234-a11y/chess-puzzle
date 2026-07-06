@@ -54,7 +54,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
-      <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-8 w-full max-w-md">
+      <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-white mb-6 text-center">회원가입</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -64,7 +64,7 @@ export default function RegisterPage() {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
               required
             />
           </div>
@@ -76,14 +76,14 @@ export default function RegisterPage() {
                 type="email"
                 value={form.email}
                 onChange={(e) => { setForm({ ...form, email: e.target.value }); setCodeSent(false); setCodeMessage(""); }}
-                className="flex-1 bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+                className="flex-1 bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
                 required
               />
               <button
                 type="button"
                 onClick={sendCode}
                 disabled={sendingCode}
-                className="bg-[#0f3460] border border-[#1a4a7a] hover:border-[#e94560] text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm transition whitespace-nowrap disabled:opacity-50"
+                className="bg-[#3d3a37] border border-[#57534e] hover:border-[#81b64c] text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm transition whitespace-nowrap disabled:opacity-50"
               >
                 {sendingCode ? "발송 중..." : codeSent ? "재발송" : "인증번호 발송"}
               </button>
@@ -98,7 +98,7 @@ export default function RegisterPage() {
                 type="text"
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560] tracking-widest text-center text-lg"
+                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c] tracking-widest text-center text-lg"
                 placeholder="6자리 입력"
                 maxLength={6}
                 required
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                 const text = e.clipboardData.getData("text");
                 if (text) setForm((f) => ({ ...f, password: text }));
               }}
-              className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
               required
               minLength={6}
             />
@@ -127,7 +127,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-[#e94560] hover:bg-red-600 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
+            className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
           >
             {loading ? "처리 중..." : "회원가입"}
           </button>
@@ -135,7 +135,7 @@ export default function RegisterPage() {
 
         <p className="text-gray-400 text-sm text-center mt-4">
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="text-[#e94560] hover:underline">
+          <Link href="/login" className="text-[#81b64c] hover:underline">
             로그인
           </Link>
         </p>

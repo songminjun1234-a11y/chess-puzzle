@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Chess } from "chess.js";
+import { ratingToDifficulty } from "@/lib/puzzleDifficulty";
 
 const ANGLE_MAP: Record<string, string> = {
   "checkmate:1":    "mateIn1",
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await res.json();
-  const puzzleItems: { game: { pgn: string }; puzzle: { id: string; initialPly: number; solution: string[] } }[] =
+  const puzzleItems: { game: { pgn: string }; puzzle: { id: string; initialPly: number; solution: string[]; rating: number } }[] =
     data.puzzles ?? [];
 
   let imported = 0;
@@ -119,9 +120,10 @@ export async function POST(req: NextRequest) {
       const fen = pos.fen();
       const moves = puzzle.solution.join(" ");
       const mateIn = mateInOverride ?? (category === "checkmate" ? computeMateIn(moves) : null);
+      const difficulty = ratingToDifficulty(puzzle.rating);
 
       await prisma.puzzle.create({
-        data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty: "medium", category, mateIn },
+        data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty, rating: puzzle.rating, category, mateIn },
       });
       imported++;
     } catch {

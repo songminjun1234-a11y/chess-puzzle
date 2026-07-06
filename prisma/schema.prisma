@@ -46,6 +46,7 @@ model Puzzle {
   fen        String
   moves      String
   difficulty String
+  rating     Int?
   category   String   @default("fork")
   mateIn     String?
   title      String

@@ -41,6 +41,7 @@ yarn-error.log*
 # migration scripts
 turso-migrate.mjs
 import-new-themes.mjs
+import-mate-puzzles.cjs
 
 # vercel
 .vercel

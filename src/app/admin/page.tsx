@@ -241,8 +241,8 @@ export default function AdminPage() {
             onClick={() => { setTab(t); setMessage(""); setImportMsg(""); }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition border ${
               tab === t
-                ? "bg-[#e94560] border-[#e94560] text-white"
-                : "border-[#0f3460] text-gray-400 hover:text-white hover:border-[#e94560]"
+                ? "bg-[#81b64c] border-[#81b64c] text-white"
+                : "border-[#3d3a37] text-gray-400 hover:text-white hover:border-[#81b64c]"
             }`}
           >
             {t === "list" ? `퍼즐 목록 (${puzzles.length})` : t === "add" ? "퍼즐 추가" : t === "generate" ? "자동 생성" : "Lichess 가져오기"}
@@ -252,10 +252,10 @@ export default function AdminPage() {
 
       {/* ── 퍼즐 목록 ── */}
       {tab === "list" && (
-        <div className="bg-[#16213e] border border-[#0f3460] rounded-xl overflow-hidden">
+        <div className="bg-[#262421] border border-[#3d3a37] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#0f3460] text-gray-400">
+              <tr className="border-b border-[#3d3a37] text-gray-400">
                 <th className="py-3 px-4 text-left">제목</th>
                 <th className="py-3 px-4 text-left">분류</th>
                 <th className="py-3 px-4 text-center">풀이 수</th>
@@ -271,7 +271,7 @@ export default function AdminPage() {
                 </tr>
               )}
               {puzzles.map((p) => (
-                <tr key={p.id} className="border-b border-[#0f3460] last:border-0 hover:bg-[#0f3460]/20">
+                <tr key={p.id} className="border-b border-[#3d3a37] last:border-0 hover:bg-[#3d3a37]/20">
                   <td className="py-3 px-4 text-white font-medium">{p.title}</td>
                   <td className="py-3 px-4 text-gray-300 text-sm">
                     {CATEGORY_LABEL[p.category] ?? p.category}
@@ -297,7 +297,7 @@ export default function AdminPage() {
 
       {/* ── 퍼즐 추가 ── */}
       {tab === "add" && (
-        <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-6 max-w-xl">
+        <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-6 max-w-xl">
           <h2 className="text-lg font-semibold text-white mb-4">새 퍼즐 추가</h2>
           <form onSubmit={handleAdd} className="flex flex-col gap-4">
             <div>
@@ -307,7 +307,7 @@ export default function AdminPage() {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="예: 핀 전술 #7"
-                className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
                 required
               />
             </div>
@@ -320,7 +320,7 @@ export default function AdminPage() {
                 value={form.fen}
                 onChange={(e) => setForm({ ...form, fen: e.target.value })}
                 placeholder="예: rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
-                className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560] font-mono text-xs"
+                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c] font-mono text-xs"
                 required
               />
             </div>
@@ -333,7 +333,7 @@ export default function AdminPage() {
                 value={form.moves}
                 onChange={(e) => setForm({ ...form, moves: e.target.value })}
                 placeholder="예: e2e4 e7e5 d1h5"
-                className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560] font-mono"
+                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c] font-mono"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -345,7 +345,7 @@ export default function AdminPage() {
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
               >
                 {TACTIC_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -359,7 +359,7 @@ export default function AdminPage() {
                 <select
                   value={form.mateIn}
                   onChange={(e) => setForm({ ...form, mateIn: e.target.value })}
-                  className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+                  className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
                 >
                   {MATE_IN_OPTIONS.map((n) => (
                     <option key={n} value={n}>{n}수</option>
@@ -375,7 +375,7 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-[#e94560] hover:bg-red-600 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
+              className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
             >
               {loading ? "추가 중..." : "퍼즐 추가"}
             </button>
@@ -385,7 +385,7 @@ export default function AdminPage() {
 
       {/* ── 자동 생성 ── */}
       {tab === "generate" && (
-        <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-6 max-w-md">
+        <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-6 max-w-md">
           <h2 className="text-lg font-semibold text-white mb-1">체크메이트 퍼즐 자동 생성</h2>
           <p className="text-gray-500 text-sm mb-5">
             chess.js로 KQK 포지션에서 체크메이트 퍼즐을 자동 생성합니다. Lichess API 불필요.
@@ -398,7 +398,7 @@ export default function AdminPage() {
               onChange={(e) => setGenCount(Math.min(100, Math.max(1, Number(e.target.value))))}
               min={1}
               max={100}
-              className="w-32 bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+              className="w-32 bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
             />
           </div>
           <div className="flex flex-col gap-3">
@@ -410,7 +410,7 @@ export default function AdminPage() {
                 <button
                   onClick={() => handleGenerate(mateIn)}
                   disabled={genLoading[mateIn]}
-                  className="bg-[#e94560] hover:bg-red-600 disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition min-w-[160px]"
+                  className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px disabled:opacity-40 text-white text-sm px-4 py-2 rounded-lg transition min-w-[160px]"
                 >
                   {genLoading[mateIn] ? "생성 중..." : label}
                 </button>
@@ -433,7 +433,7 @@ export default function AdminPage() {
         <div className="flex flex-col gap-6 max-w-xl">
 
           {/* 테마별 일괄 가져오기 */}
-          <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-6">
+          <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-6">
             <h2 className="text-lg font-semibold text-white mb-1">테마별 일괄 가져오기</h2>
             <p className="text-gray-500 text-xs mb-4">
               <code className="text-yellow-400">LICHESS_TOKEN</code>을 .env.local에 설정해야 합니다.{" "}
@@ -451,13 +451,13 @@ export default function AdminPage() {
                     onChange={(e) =>
                       setBulkCounts((p) => ({ ...p, [t.key]: Number(e.target.value) }))
                     }
-                    className="w-20 bg-[#0f3460] border border-[#1a4a7a] rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-[#e94560]"
+                    className="w-20 bg-[#3d3a37] border border-[#57534e] rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-[#81b64c]"
                   />
                   <span className="text-gray-500 text-xs">개</span>
                   <button
                     onClick={() => handleBulkImport(t.key)}
                     disabled={bulkLoading[t.key]}
-                    className="bg-[#e94560] hover:bg-red-600 disabled:opacity-40 text-white text-xs px-3 py-1 rounded transition"
+                    className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px disabled:opacity-40 text-white text-xs px-3 py-1 rounded transition"
                   >
                     {bulkLoading[t.key] ? "..." : "가져오기"}
                   </button>
@@ -476,7 +476,7 @@ export default function AdminPage() {
           </div>
 
           {/* ID로 가져오기 */}
-          <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-6">
+          <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-6">
             <h2 className="text-lg font-semibold text-white mb-1">퍼즐 ID로 가져오기</h2>
             <p className="text-gray-500 text-sm mb-4">
               Lichess 퍼즐 URL의 ID를 입력하세요.{" "}
@@ -488,13 +488,13 @@ export default function AdminPage() {
                 value={lichessId}
                 onChange={(e) => setLichessId(e.target.value)}
                 placeholder="퍼즐 ID (예: DTJ7x)"
-                className="flex-1 bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560] font-mono"
+                className="flex-1 bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c] font-mono"
                 onKeyDown={(e) => e.key === "Enter" && handleImportById()}
               />
               <button
                 onClick={handleImportById}
                 disabled={!lichessId.trim()}
-                className="bg-[#e94560] hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
+                className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
               >
                 가져오기
               </button>
@@ -502,7 +502,7 @@ export default function AdminPage() {
           </div>
 
           {/* CSV 업로드 */}
-          <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-6">
+          <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-6">
             <h2 className="text-lg font-semibold text-white mb-1">CSV로 대량 가져오기</h2>
             <p className="text-gray-500 text-sm mb-1">
               Lichess 퍼즐 데이터베이스 CSV를 업로드하세요.
@@ -522,7 +522,7 @@ export default function AdminPage() {
                   onChange={(e) => setCsvCount(Number(e.target.value))}
                   min={1}
                   max={200}
-                  className="w-32 bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+                  className="w-32 bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
                 />
               </div>
               <div>
@@ -531,12 +531,12 @@ export default function AdminPage() {
                   ref={fileRef}
                   type="file"
                   accept=".csv,.txt"
-                  className="text-gray-400 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-[#0f3460] file:text-gray-300 hover:file:bg-[#1a4a7a]"
+                  className="text-gray-400 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-[#3d3a37] file:text-gray-300 hover:file:bg-[#57534e]"
                 />
               </div>
               <button
                 onClick={handleImportCsv}
-                className="bg-[#e94560] hover:bg-red-600 text-white py-2 rounded-lg font-semibold transition w-full"
+                className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition w-full"
               >
                 CSV 가져오기
               </button>

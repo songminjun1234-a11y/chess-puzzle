@@ -51,20 +51,25 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
             <Link
               key={p.id}
               href={`/puzzle?id=${p.id}`}
-              className="bg-[#16213e] border border-[#0f3460] hover:border-[#e94560]/50 rounded-lg px-4 py-3 transition block"
+              className="bg-[#262421] border border-[#3d3a37] hover:border-[#81b64c]/50 rounded-lg px-4 py-3 transition block"
             >
               <div className="flex items-center justify-between">
                 <span className="text-white text-sm font-medium">
                   {CATEGORY_LABEL[p.category] ?? p.category}
                   {p.category === "checkmate" && p.mateIn ? ` · ${p.mateIn}수` : ""}
                 </span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                  p.difficulty === "easy" ? "bg-green-900/40 text-green-400" :
-                  p.difficulty === "medium" ? "bg-yellow-900/40 text-yellow-400" :
-                  "bg-red-900/40 text-red-400"
-                }`}>
-                  {p.difficulty === "easy" ? "쉬움" : p.difficulty === "medium" ? "보통" : "어려움"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {p.rating != null && (
+                    <span className="text-xs text-gray-500">레이팅 {p.rating}</span>
+                  )}
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    p.difficulty === "easy" ? "bg-green-900/40 text-green-400" :
+                    p.difficulty === "medium" ? "bg-yellow-900/40 text-yellow-400" :
+                    "bg-red-900/40 text-red-400"
+                  }`}>
+                    {p.difficulty === "easy" ? "쉬움" : p.difficulty === "medium" ? "보통" : "어려움"}
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

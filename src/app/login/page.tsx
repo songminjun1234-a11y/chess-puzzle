@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
-      <div className="bg-[#16213e] border border-[#0f3460] rounded-xl p-8 w-full max-w-md">
+      <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-white mb-6 text-center">로그인</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -43,7 +43,7 @@ export default function LoginPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
               required
             />
           </div>
@@ -53,7 +53,7 @@ export default function LoginPage() {
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-[#0f3460] border border-[#1a4a7a] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#e94560]"
+              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
               required
             />
           </div>
@@ -63,7 +63,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="bg-[#e94560] hover:bg-red-600 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
+            className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
           >
             {loading ? "로그인 중..." : "로그인"}
           </button>
@@ -71,7 +71,7 @@ export default function LoginPage() {
 
         <p className="text-gray-400 text-sm text-center mt-4">
           계정이 없으신가요?{" "}
-          <Link href="/register" className="text-[#e94560] hover:underline">
+          <Link href="/register" className="text-[#81b64c] hover:underline">
             회원가입
           </Link>
         </p>

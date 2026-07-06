@@ -22,6 +22,7 @@ type PuzzleRecord = {
   category: string;
   mateIn: string | null;
   difficulty: string;
+  rating: number | null;
   attempts: number;
   solvedAt: string;
 };
@@ -32,7 +33,7 @@ function PuzzleCard({ p }: { p: PuzzleRecord }) {
   return (
     <Link
       href="/puzzle"
-      className="bg-[#16213e] border border-[#0f3460] rounded-lg px-4 py-3 hover:border-[#e94560]/50 transition block"
+      className="bg-[#262421] border border-[#3d3a37] rounded-lg px-4 py-3 hover:border-[#81b64c]/50 transition block"
     >
       <div className="flex items-center justify-between">
         <span className="text-white text-sm font-medium">
@@ -49,6 +50,9 @@ function PuzzleCard({ p }: { p: PuzzleRecord }) {
         }`}>
           {p.difficulty === "easy" ? "쉬움" : p.difficulty === "medium" ? "보통" : "어려움"}
         </span>
+        {p.rating != null && (
+          <span className="text-xs text-gray-500">레이팅 {p.rating}</span>
+        )}
         <span className="text-xs text-gray-600">
           {new Date(p.solvedAt).toLocaleDateString("ko-KR")}
         </span>
@@ -115,7 +119,7 @@ export default function MyPage() {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-56px)]">
         <p className="text-gray-400">
-          <Link href="/login" className="text-[#e94560] hover:underline">로그인</Link>이 필요합니다.
+          <Link href="/login" className="text-[#81b64c] hover:underline">로그인</Link>이 필요합니다.
         </p>
       </div>
     );
@@ -131,7 +135,7 @@ export default function MyPage() {
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">폴더</h2>
           <button
             onClick={() => setShowInput(true)}
-            className="w-6 h-6 rounded-md bg-[#0f3460] hover:bg-[#e94560] text-white flex items-center justify-center text-lg leading-none transition"
+            className="w-6 h-6 rounded-md bg-[#3d3a37] hover:bg-[#81b64c] text-white flex items-center justify-center text-lg leading-none transition"
           >
             +
           </button>
@@ -146,12 +150,12 @@ export default function MyPage() {
               onChange={(e) => setFolderName(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="폴더 이름 입력"
-              className="flex-1 bg-[#0f3460] border border-[#1a4a7a] focus:border-[#e94560] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+              className="flex-1 bg-[#3d3a37] border border-[#57534e] focus:border-[#81b64c] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
             />
             <button
               onClick={createFolder}
               disabled={creating || !folderName.trim()}
-              className="bg-[#e94560] hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
+              className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
             >
               {creating ? "..." : "만들기"}
             </button>
@@ -172,7 +176,7 @@ export default function MyPage() {
               <Link
                 key={f.id}
                 href={`/my/folders/${f.id}`}
-                className="bg-[#16213e] border border-[#0f3460] hover:border-[#e94560]/50 rounded-lg px-4 py-3 flex items-center gap-2 transition"
+                className="bg-[#262421] border border-[#3d3a37] hover:border-[#81b64c]/50 rounded-lg px-4 py-3 flex items-center gap-2 transition"
               >
                 <span className="text-lg">📁</span>
                 <span className="text-white text-sm truncate">{f.name}</span>
@@ -191,7 +195,7 @@ export default function MyPage() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
               tab === "wrong"
                 ? "bg-red-500/20 text-red-400 border border-red-500/40"
-                : "text-gray-400 border border-[#0f3460] hover:text-white"
+                : "text-gray-400 border border-[#3d3a37] hover:text-white"
             }`}
           >
             틀린 문제 {!loading && <span className="ml-1 text-xs">({wrong.length})</span>}
@@ -201,7 +205,7 @@ export default function MyPage() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
               tab === "correct"
                 ? "bg-green-500/20 text-green-400 border border-green-500/40"
-                : "text-gray-400 border border-[#0f3460] hover:text-white"
+                : "text-gray-400 border border-[#3d3a37] hover:text-white"
             }`}
           >
             한 번에 맞힌 문제 {!loading && <span className="ml-1 text-xs">({correct.length})</span>}

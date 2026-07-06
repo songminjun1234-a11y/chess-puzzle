@@ -3,12 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Chess } from "chess.js";
-
-function ratingToDifficulty(rating: number) {
-  if (rating < 1300) return "easy";
-  if (rating < 1800) return "medium";
-  return "hard";
-}
+import { ratingToDifficulty } from "@/lib/puzzleDifficulty";
 
 function computeMateIn(moves: string): string {
   const n = Math.ceil(moves.trim().split(/\s+/).filter(Boolean).length / 2);
@@ -87,7 +82,7 @@ export async function POST(req: NextRequest) {
     const finalMateIn = category === "checkmate" ? (mateIn ?? computeMateIn(moves)) : null;
 
     const created = await prisma.puzzle.create({
-      data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty, category, mateIn: finalMateIn },
+      data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty, rating: puzzle.rating, category, mateIn: finalMateIn },
     });
 
     return NextResponse.json({ success: true, imported: 1, puzzle: created });
@@ -137,6 +132,7 @@ export async function POST(req: NextRequest) {
             fen: puzzleFen,
             moves: puzzleMoves,
             difficulty,
+            rating,
             category,
             mateIn: finalMateIn,
           },
