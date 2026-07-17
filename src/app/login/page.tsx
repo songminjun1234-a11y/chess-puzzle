@@ -70,7 +70,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-sm text-center mt-4" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-sm text-center mt-3">
+          <Link href="/login/forgot" style={{ color: "var(--color-text-muted)" }} className="hover:underline">
+            비밀번호를 잊으셨나요?
+          </Link>
+        </p>
+
+        <p className="text-sm text-center mt-2" style={{ color: "var(--color-text-muted)" }}>
           계정이 없으신가요?{" "}
           <Link href="/register" style={{ color: "var(--color-gold)" }} className="hover:underline">
             회원가입
