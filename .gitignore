@@ -40,12 +40,19 @@ yarn-error.log*
 
 # migration scripts
 turso-migrate.mjs
+turso-migrate-explanation-solvelog.mjs
 import-new-themes.mjs
 import-mate-puzzles.cjs
 
 # vercel
 .vercel
 
+# claude code local tooling (may contain locally-recorded secrets)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*

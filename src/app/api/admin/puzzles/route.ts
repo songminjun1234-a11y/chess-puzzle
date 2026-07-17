@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const session = await checkAdmin();
   if (!session) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
 
-  const { title, fen, moves, category, mateIn } = await req.json();
+  const { title, fen, moves, category, mateIn, explanation } = await req.json();
   if (!title || !fen || !moves || !category) {
     return NextResponse.json({ error: "모든 필드를 입력해주세요." }, { status: 400 });
   }
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       difficulty: "medium",
       category,
       mateIn: category === "checkmate" ? (mateIn ?? computeMateIn(moves)) : null,
+      explanation: explanation || null,
     },
   });
   return NextResponse.json(puzzle);

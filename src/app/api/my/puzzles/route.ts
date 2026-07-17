@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { computeWeaknesses } from "@/lib/weaknesses";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -17,6 +18,7 @@ export async function GET() {
 
   const correct = records.filter((r) => r.attempts === 1).map((r) => ({ ...r.puzzle, attempts: r.attempts, solvedAt: r.solvedAt }));
   const wrong = records.filter((r) => r.attempts > 1).map((r) => ({ ...r.puzzle, attempts: r.attempts, solvedAt: r.solvedAt }));
+  const weaknesses = computeWeaknesses(records);
 
-  return NextResponse.json({ correct, wrong });
+  return NextResponse.json({ correct, wrong, weaknesses });
 }

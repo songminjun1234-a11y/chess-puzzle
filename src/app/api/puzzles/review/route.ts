@@ -1,0 +1,76 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { computeThemeBreakdown } from "@/lib/weaknesses";
+import type { Prisma } from "@prisma/client";
+
+const MAX_WEAK_THEMES = 5;
+const MAX_PUZZLES = 30;
+
+function whereForThemeKey(key: string): Prisma.PuzzleWhereInput {
+  const mateMatch = key.match(/^checkmate:(.+)$/);
+  if (mateMatch) {
+    return { category: "checkmate", mateIn: mateMatch[1] };
+  }
+  return {
+    OR: [{ category: key }, { themes: { contains: key } }],
+  };
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const solvedRecords = await prisma.solvedPuzzle.findMany({
+    where: { userId },
+    include: { puzzle: { select: { category: true, mateIn: true, themes: true } } },
+  });
+
+  const weakThemes = computeThemeBreakdown(solvedRecords)
+    .filter((w) => w.missRate > 0)
+    .slice(0, MAX_WEAK_THEMES);
+
+  if (weakThemes.length === 0) {
+    return NextResponse.json({ puzzles: [], weakThemes: [], candidateCount: 0 });
+  }
+
+  const candidates = await prisma.puzzle.findMany({
+    where: { OR: weakThemes.map((w) => whereForThemeKey(w.key)) },
+    select: {
+      id: true,
+      title: true,
+      fen: true,
+      moves: true,
+      category: true,
+      mateIn: true,
+      difficulty: true,
+      rating: true,
+      explanation: true,
+    },
+    take: MAX_PUZZLES * 3, // over-fetch, then narrow to what's actually due
+  });
+
+  const reviews = await prisma.puzzleReview.findMany({
+    where: { userId, puzzleId: { in: candidates.map((p) => p.id) } },
+    select: { puzzleId: true, dueAt: true },
+  });
+  const dueAtByPuzzle = new Map(reviews.map((r) => [r.puzzleId, r.dueAt]));
+
+  const now = new Date();
+  // A puzzle with no review record yet has never been scheduled — treat it as
+  // due immediately. Otherwise only show it once its scheduled date arrives.
+  const due = candidates.filter((p) => {
+    const dueAt = dueAtByPuzzle.get(p.id);
+    return !dueAt || dueAt <= now;
+  });
+
+  return NextResponse.json({
+    puzzles: due.slice(0, MAX_PUZZLES),
+    weakThemes: weakThemes.map((w) => ({ key: w.key, label: w.label, missRate: w.missRate })),
+    candidateCount: candidates.length,
+  });
+}

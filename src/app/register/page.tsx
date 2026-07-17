@@ -53,52 +53,59 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
-      <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">회원가입</h2>
+    <div className="flex items-center justify-center min-h-[calc(100vh-72px)] px-4">
+      <div className="panel-classic p-8 w-full max-w-md" style={{ fontFamily: "var(--font-ui)" }}>
+        <h2
+          className="text-3xl mb-6 text-center tracking-wide"
+          style={{ fontFamily: "var(--font-display)", color: "var(--color-gold)" }}
+        >
+          회원가입
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-400 text-sm mb-1">이름</label>
+            <label className="label-classic">이름</label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
+              className="input-classic"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-400 text-sm mb-1">이메일</label>
+            <label className="label-classic">이메일</label>
             <div className="flex gap-2">
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => { setForm({ ...form, email: e.target.value }); setCodeSent(false); setCodeMessage(""); }}
-                className="flex-1 bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
+                className="input-classic flex-1"
                 required
               />
               <button
                 type="button"
                 onClick={sendCode}
                 disabled={sendingCode}
-                className="bg-[#3d3a37] border border-[#57534e] hover:border-[#81b64c] text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm transition whitespace-nowrap disabled:opacity-50"
+                className="btn-classic-outline px-3 py-2 text-sm whitespace-nowrap disabled:opacity-50"
               >
                 {sendingCode ? "발송 중..." : codeSent ? "재발송" : "인증번호 발송"}
               </button>
             </div>
-            {codeMessage && <p className="text-green-400 text-xs mt-1">{codeMessage}</p>}
+            {codeMessage && (
+              <p className="text-xs mt-1" style={{ color: "var(--color-gold)" }}>{codeMessage}</p>
+            )}
           </div>
 
           {codeSent && (
             <div>
-              <label className="block text-gray-400 text-sm mb-1">인증번호</label>
+              <label className="label-classic">인증번호</label>
               <input
                 type="text"
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
-                className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c] tracking-widest text-center text-lg"
+                className="input-classic tracking-widest text-center text-lg"
                 placeholder="6자리 입력"
                 maxLength={6}
                 required
@@ -107,7 +114,7 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label className="block text-gray-400 text-sm mb-1">비밀번호</label>
+            <label className="label-classic">비밀번호</label>
             <input
               type="password"
               value={form.password}
@@ -116,26 +123,22 @@ export default function RegisterPage() {
                 const text = e.clipboardData.getData("text");
                 if (text) setForm((f) => ({ ...f, password: text }));
               }}
-              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
+              className="input-classic"
               required
               minLength={6}
             />
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-700 text-sm">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="btn-classic-gold btn-restrained py-2 disabled:opacity-50">
             {loading ? "처리 중..." : "회원가입"}
           </button>
         </form>
 
-        <p className="text-gray-400 text-sm text-center mt-4">
+        <p className="text-sm text-center mt-4" style={{ color: "var(--color-text-muted)" }}>
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="text-[#81b64c] hover:underline">
+          <Link href="/login" style={{ color: "var(--color-gold)" }} className="hover:underline">
             로그인
           </Link>
         </p>

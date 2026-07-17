@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Chess } from "chess.js";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { analyzeMultiPv } from "@/lib/stockfishClient";
+import { buildMistakeReport, type MistakeReport } from "@/lib/mistakeExplanation";
+import { EvalBar } from "@/components/EvalBar";
+import { playMoveSound } from "@/lib/sound";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -21,6 +25,7 @@ type Puzzle = {
   mateIn: string | null;
   difficulty: string;
   rating: number | null;
+  explanation: string | null;
 };
 
 const DIFFICULTY_OPTIONS = [
@@ -66,9 +71,35 @@ function pickRandomPuzzle(list: Puzzle[]): Puzzle | undefined {
   return randomGroup[Math.floor(Math.random() * randomGroup.length)];
 }
 
-export default function PuzzlePage() {
+function pvToSan(fen: string, pv: string[]): string[] {
+  const chess = new Chess(fen);
+  const sans: string[] = [];
+  for (const uci of pv) {
+    let move;
+    try {
+      move = chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch {
+      break;
+    }
+    if (!move) break;
+    sans.push(move.san);
+  }
+  return sans;
+}
+
+// Chess.com-style green board.
+const CLASSIC_SQUARE_STYLES = {
+  darkSquareStyle: { backgroundColor: "#769656" },
+  lightSquareStyle: { backgroundColor: "#eeeed2" },
+};
+
+function PuzzlePageInner() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const isReview = searchParams.get("review") === "1";
+  const [weakThemes, setWeakThemes] = useState<{ key: string; label: string; missRate: number }[]>([]);
+  const [reviewEmpty, setReviewEmpty] = useState(false);
+  const [reviewCandidateCount, setReviewCandidateCount] = useState(0);
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedMateIn, setSelectedMateIn] = useState("all");
@@ -86,6 +117,12 @@ export default function PuzzlePage() {
   const [solveTime, setSolveTime] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+  const [mistakeReport, setMistakeReport] = useState<MistakeReport | null>(null);
+  const [mistakeLoading, setMistakeLoading] = useState(false);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [activeLine, setActiveLine] = useState(0);
+  const [customReplayFen, setCustomReplayFen] = useState<string | null>(null);
+  const mistakeRequestRef = useRef(0);
 
   type Folder = { id: string; name: string };
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -110,6 +147,24 @@ export default function PuzzlePage() {
         });
       return;
     }
+    if (isReview) {
+      setReviewEmpty(false);
+      fetch("/api/puzzles/review")
+        .then((r) => r.json())
+        .then((data: {
+          puzzles: Puzzle[];
+          weakThemes: { key: string; label: string; missRate: number }[];
+          candidateCount: number;
+        }) => {
+          setWeakThemes(data.weakThemes ?? []);
+          setReviewCandidateCount(data.candidateCount ?? 0);
+          setPuzzles(data.puzzles ?? []);
+          const next = pickRandomPuzzle(data.puzzles ?? []);
+          if (next) loadPuzzle(next);
+          else setReviewEmpty(true);
+        });
+      return;
+    }
     const params = new URLSearchParams();
     if (selectedCategory !== "all") params.set("category", selectedCategory);
     if (selectedCategory === "checkmate" && selectedMateIn !== "all") {
@@ -124,7 +179,7 @@ export default function PuzzlePage() {
         const next = pickRandomPuzzle(data);
         if (next) loadPuzzle(next);
       });
-  }, [selectedCategory, selectedMateIn, selectedDifficulty]);
+  }, [selectedCategory, selectedMateIn, selectedDifficulty, isReview]);
 
   const selectDifficulty = (diff: string) => {
     setSelectedDifficulty((prev) => (prev === diff ? "all" : diff));
@@ -151,6 +206,12 @@ export default function PuzzlePage() {
     setElapsed(0);
     setShowSaveMenu(false);
     setSavedFolderId(null);
+    mistakeRequestRef.current++;
+    setMistakeReport(null);
+    setMistakeLoading(false);
+    setReplayIndex(0);
+    setActiveLine(0);
+    setCustomReplayFen(null);
     startTimeRef.current = Date.now();
     timerRef.current = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -172,6 +233,102 @@ export default function PuzzlePage() {
     loadPuzzle(next);
   };
 
+  const analyzeMistake = async (fenAfterMove: string) => {
+    const requestId = ++mistakeRequestRef.current;
+    setMistakeLoading(true);
+    const expectedLines = Math.min(3, new Chess(fenAfterMove).moves().length);
+    try {
+      const lines = await analyzeMultiPv(fenAfterMove, 14, 3, (partialLines) => {
+        // Don't reveal a partial result (e.g. only 1 of 3 lines found so far) —
+        // wait until the full expected line count has streamed in at least once.
+        if (mistakeRequestRef.current !== requestId || partialLines.length < expectedLines) return;
+        setMistakeLoading(false);
+        setMistakeReport(buildMistakeReport(fenAfterMove, partialLines));
+      });
+      if (mistakeRequestRef.current !== requestId) return;
+      setMistakeReport(buildMistakeReport(fenAfterMove, lines));
+      setReplayIndex(0);
+      setActiveLine(0);
+      setCustomReplayFen(null);
+    } catch {
+      if (mistakeRequestRef.current !== requestId) return;
+      setMistakeReport({ text: "분석에 실패했습니다.", lines: [] });
+    } finally {
+      if (mistakeRequestRef.current === requestId) setMistakeLoading(false);
+    }
+  };
+
+  const activeLineReport = mistakeReport?.lines[activeLine] ?? null;
+
+  useEffect(() => {
+    if (!activeLineReport) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setCustomReplayFen(null);
+        setReplayIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        setCustomReplayFen(null);
+        setReplayIndex((i) => Math.min(activeLineReport.replayFens.length - 1, i + 1));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeLineReport]);
+
+  const replayPosition = activeLineReport
+    ? customReplayFen ??
+      activeLineReport.replayFens[Math.min(replayIndex, activeLineReport.replayFens.length - 1)]
+    : null;
+
+  const [customEvalCp, setCustomEvalCp] = useState<number | null>(null);
+  const [customEvalMate, setCustomEvalMate] = useState<number | null>(null);
+  const [customBestPv, setCustomBestPv] = useState<string[] | null>(null);
+  const customEvalRequestRef = useRef(0);
+
+  useEffect(() => {
+    const requestId = ++customEvalRequestRef.current;
+    if (!customReplayFen) {
+      setCustomEvalCp(null);
+      setCustomEvalMate(null);
+      setCustomBestPv(null);
+      return;
+    }
+    const sideToMove = customReplayFen.split(" ")[1] === "b" ? "b" : "w";
+    const toWhitePerspective = (n: number) => (sideToMove === "w" ? n : -n);
+    const applyTopLine = (lines: { scoreCp: number | null; scoreMate: number | null; pv: string[] }[]) => {
+      if (customEvalRequestRef.current !== requestId) return;
+      const top = lines[0];
+      if (!top) return;
+      setCustomEvalCp(top.scoreCp != null ? toWhitePerspective(top.scoreCp) : null);
+      setCustomEvalMate(top.scoreMate != null ? toWhitePerspective(top.scoreMate) : null);
+      setCustomBestPv(top.pv ?? null);
+    };
+    analyzeMultiPv(customReplayFen, 14, 1, applyTopLine).then(applyTopLine);
+  }, [customReplayFen]);
+
+  const customBestSan =
+    customReplayFen && customBestPv ? pvToSan(customReplayFen, customBestPv) : null;
+
+  const onReplayDrop = (sourceSquare: string, targetSquare: string): boolean => {
+    if (!replayPosition) return false;
+    const chess = new Chess(replayPosition);
+    let move;
+    try {
+      move = chess.move({ from: sourceSquare, to: targetSquare, promotion: "q" });
+    } catch {
+      return false;
+    }
+    if (!move) return false;
+    playMoveSound();
+    // Clear the previous position's live analysis immediately (not just via the
+    // effect below) so a stale best-move PV never gets replayed against this new FEN.
+    setCustomBestPv(null);
+    setCustomEvalCp(null);
+    setCustomEvalMate(null);
+    setCustomReplayFen(chess.fen());
+    return true;
+  };
+
   const onDrop = (sourceSquare: string, targetSquare: string): boolean => {
     if (status !== "playing" || !currentPuzzle) return false;
 
@@ -179,8 +336,21 @@ export default function PuzzlePage() {
     const playerMove = sourceSquare + targetSquare;
 
     const newGame = new Chess(game.fen());
-    const result = newGame.move({ from: sourceSquare, to: targetSquare, promotion: "q" });
+    let result;
+    try {
+      result = newGame.move({ from: sourceSquare, to: targetSquare, promotion: "q" });
+    } catch {
+      return false;
+    }
     if (!result) return false;
+    playMoveSound();
+
+    mistakeRequestRef.current++;
+    setMistakeReport(null);
+    setMistakeLoading(false);
+    setReplayIndex(0);
+    setActiveLine(0);
+    setCustomReplayFen(null);
 
     if (playerMove === expectedMove) {
       const nextIndex = moveIndex + 1;
@@ -191,13 +361,14 @@ export default function PuzzlePage() {
 
       if (nextIndex >= solutionMoves.length) {
         if (timerRef.current) clearInterval(timerRef.current);
-        setSolveTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
+        const timeSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setSolveTime(timeSeconds);
         setStatus("correct");
         if (session) {
           fetch("/api/puzzles/solve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ puzzleId: currentPuzzle.id, attempts }),
+            body: JSON.stringify({ puzzleId: currentPuzzle.id, attempts, timeSeconds }),
           });
         }
         const solved = currentPuzzle;
@@ -206,11 +377,16 @@ export default function PuzzlePage() {
         setTimeout(() => {
           const opponentMove = solutionMoves[nextIndex];
           const opponentGame = new Chess(newGame.fen());
-          opponentGame.move({
-            from: opponentMove.slice(0, 2),
-            to: opponentMove.slice(2, 4),
-            promotion: "q",
-          });
+          try {
+            opponentGame.move({
+              from: opponentMove.slice(0, 2),
+              to: opponentMove.slice(2, 4),
+              promotion: "q",
+            });
+          } catch {
+            // Malformed puzzle solution data; leave the position as-is rather than crash.
+          }
+          playMoveSound();
           setGame(opponentGame);
           setFen(opponentGame.fen());
           setMoveIndex(nextIndex + 1);
@@ -219,6 +395,7 @@ export default function PuzzlePage() {
     } else {
       setAttempts((a) => a + 1);
       setStatus("wrong");
+      analyzeMistake(newGame.fen());
       setTimeout(() => setStatus("playing"), 1200);
     }
 
@@ -268,63 +445,93 @@ export default function PuzzlePage() {
   };
 
   const btnClass = (active: boolean, small = false) =>
-    `rounded-full font-medium transition border ${small ? "px-3 py-0.5 text-xs" : "px-3 py-1 text-sm"} ${
-      active
-        ? "bg-[#81b64c] border-[#81b64c] text-white"
-        : "border-[#3d3a37] text-gray-400 hover:border-[#81b64c] hover:text-white"
+    `rounded-full transition border ${small ? "px-3 py-0.5 text-xs" : "px-3 py-1 text-sm"} ${
+      active ? "filter-btn-active" : "filter-btn"
     }`;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-6">퍼즐 풀기</h1>
+    <div className="max-w-5xl mx-auto px-4 py-8" style={{ fontFamily: "var(--font-ui)" }}>
+      <h1
+        className="text-4xl mb-6 tracking-wide"
+        style={{ fontFamily: "var(--font-display)", color: "var(--color-gold)" }}
+      >
+        퍼즐 풀기
+      </h1>
 
-      {/* 필터 박스 */}
-      <div className="bg-[#262421] border border-[#3d3a37] rounded-xl px-4 py-3 mb-6 flex flex-col gap-2.5">
-        {/* 전술 행 */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            onClick={() => selectCategory("all")}
-            className={btnClass(selectedCategory === "all")}
-          >
-            전체
-          </button>
-          <span className="text-[#3d3a37] select-none mx-0.5">│</span>
-          {TACTIC_CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => selectCategory(cat.value)}
-              className={btnClass(selectedCategory === cat.value)}
-            >
-              {cat.label}
-            </button>
-          ))}
+      {isReview ? (
+        /* 복습 모드 배너 */
+        <div className="panel-classic px-5 py-4 mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              🔁 약점 복습 모드
+            </span>
+            <Link href="/puzzle" className="text-xs hover:underline" style={{ color: "var(--color-text-muted)" }}>
+              복습 종료
+            </Link>
+          </div>
+          {weakThemes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {weakThemes.map((w) => (
+                <span
+                  key={w.key}
+                  className="text-xs px-2 py-0.5 rounded-full border"
+                  style={{ borderColor: "var(--color-gold-soft)", color: "var(--color-text-muted)" }}
+                >
+                  {w.label} · 오답률 {Math.round(w.missRate * 100)}%
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* 구분선 */}
-        <div className="border-t border-[#3d3a37]" />
-
-        {/* 체크메이트 행 */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            onClick={() => selectCategory("checkmate")}
-            className={btnClass(selectedCategory === "checkmate" && selectedMateIn === "all")}
-          >
-            체크메이트
-          </button>
-          {MATE_IN_OPTIONS.map((n) => (
+      ) : (
+        /* 필터 박스 */
+        <div className="panel-classic px-5 py-4 mb-8 flex flex-col gap-3">
+          {/* 전술 행 */}
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
-              key={n}
-              onClick={() => { setSelectedCategory("checkmate"); setSelectedMateIn(n); }}
-              className={btnClass(
-                selectedCategory === "checkmate" && selectedMateIn === n,
-                true
-              )}
+              onClick={() => selectCategory("all")}
+              className={btnClass(selectedCategory === "all")}
             >
-              {n}수
+              전체
             </button>
-          ))}
+            <span style={{ color: "var(--color-gold-soft)" }} className="select-none mx-0.5">│</span>
+            {TACTIC_CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => selectCategory(cat.value)}
+                className={btnClass(selectedCategory === cat.value)}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t" style={{ borderColor: "var(--color-gold-soft)" }} />
+
+          {/* 체크메이트 행 */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => selectCategory("checkmate")}
+              className={btnClass(selectedCategory === "checkmate" && selectedMateIn === "all")}
+            >
+              체크메이트
+            </button>
+            {MATE_IN_OPTIONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => { setSelectedCategory("checkmate"); setSelectedMateIn(n); }}
+                className={btnClass(
+                  selectedCategory === "checkmate" && selectedMateIn === n,
+                  true
+                )}
+              >
+                {n}수
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex gap-6 flex-col lg:flex-row">
         {/* 체스판 */}
@@ -335,8 +542,10 @@ export default function PuzzlePage() {
                 <Chessboard
                   key={currentPuzzle.id}
                   options={{
+                    id: "main-board",
                     position: fen || currentPuzzle.fen,
                     boardOrientation: orientation,
+                    ...CLASSIC_SQUARE_STYLES,
                     boardStyle: {
                       borderRadius: "8px",
                       boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
@@ -351,9 +560,9 @@ export default function PuzzlePage() {
                 />
               </div>
 
-              <div className="w-full max-w-[480px] bg-[#262421] border border-[#3d3a37] rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">
+              <div className="panel-classic w-full max-w-[480px] p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                     {selectedCategory === "all" ? (
                       "전체"
                     ) : (
@@ -366,81 +575,117 @@ export default function PuzzlePage() {
                     )}
                     {currentPuzzle.rating != null && ` · 레이팅 ${currentPuzzle.rating}`}
                   </span>
-                  <span className="text-sm font-mono text-gray-400">
+                  <span className="text-sm" style={{ fontFamily: "var(--font-ui)", color: "var(--color-text-muted)" }}>
                     {status === "correct" && solveTime !== null
                       ? `${solveTime}초`
                       : `${elapsed}초`}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   <span
-                    className={`w-4 h-4 rounded-full border-2 ${orientation === "white" ? "bg-white border-gray-300" : "bg-gray-900 border-gray-500"}`}
+                    className="w-3.5 h-3.5 rounded-full border"
+                    style={{
+                      background: orientation === "white" ? "var(--color-cream)" : "#1a1108",
+                      borderColor: "var(--color-gold-soft)",
+                    }}
                   />
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm" style={{ color: "var(--color-text)" }}>
                     {orientation === "white" ? "백" : "흑"}으로 플레이
                   </span>
                 </div>
 
                 {status === "correct" && (
-                  <p className="text-green-400 font-semibold">✓ 정답입니다! ({attempts}번 시도 · {solveTime}초) — 다음 문제 로딩 중...</p>
+                  <p style={{ color: "var(--color-gold)" }} className="font-semibold">
+                    ✓ 정답입니다! ({attempts}번 시도 · {solveTime}초) — 다음 문제 로딩 중...
+                  </p>
                 )}
                 {status === "wrong" && (
-                  <p className="text-red-400 font-semibold">✗ 틀렸습니다. 다시 시도해보세요.</p>
+                  <p className="text-sm" style={{ fontFamily: "var(--font-ui)", color: "var(--color-text-muted)" }}>
+                    이 수는 정답이 아닙니다. 다시 시도해보세요.
+                  </p>
                 )}
-                {status === "playing" && (
-                  <p className="text-gray-400 text-sm">올바른 수를 찾아보세요.</p>
+                {status === "playing" && !mistakeReport && !mistakeLoading && (
+                  <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>올바른 수를 찾아보세요.</p>
                 )}
-                {hint && <p className="text-yellow-400 text-sm mt-1">{hint}</p>}
+                {hint && (
+                  <p className="text-sm mt-1" style={{ color: "var(--color-gold)" }}>{hint}</p>
+                )}
 
-                <div className="flex gap-2 mt-3 flex-wrap items-end">
+                {(mistakeLoading || mistakeReport) && (
+                  <div
+                    className="surface-dark mt-3 p-4 rounded-sm border"
+                    style={{
+                      background: "linear-gradient(180deg, var(--color-feedback-bg), var(--color-bg-panel-alt))",
+                      borderColor: "var(--color-gold-soft)",
+                    }}
+                  >
+                    {mistakeLoading ? (
+                      <p className="text-xs" style={{ fontFamily: "var(--font-ui)", color: "var(--color-text-muted)" }}>
+                        ◆ 분석 중...
+                      </p>
+                    ) : (
+                      <>
+                        <p
+                          className="text-sm leading-relaxed"
+                          style={{ fontFamily: "var(--font-body)", color: "var(--color-cream)" }}
+                        >
+                          <span style={{ color: "var(--color-gold-bright)" }}>◆ </span>
+                          {mistakeReport!.text}
+                        </p>
+                        {currentPuzzle.explanation && (
+                          <p
+                            className="text-sm leading-relaxed mt-2 pt-2 border-t"
+                            style={{
+                              fontFamily: "var(--font-body)",
+                              color: "var(--color-text-muted)",
+                              borderColor: "var(--color-gold-soft)",
+                            }}
+                          >
+                            <span style={{ color: "var(--color-gold-bright)" }}>◆ </span>
+                            {currentPuzzle.explanation}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2 mt-4 flex-wrap items-end">
                   {status === "playing" && (
-                    <button
-                      onClick={showHint}
-                      className="text-sm border border-[#3d3a37] hover:border-yellow-400 text-gray-400 hover:text-yellow-400 px-3 py-1 rounded transition"
-                    >
+                    <button onClick={showHint} className="btn-classic-outline text-sm px-3 py-1">
                       힌트
                     </button>
                   )}
-                  <button
-                    onClick={() => loadPuzzle(currentPuzzle)}
-                    className="text-sm border border-[#3d3a37] hover:border-white text-gray-400 hover:text-white px-3 py-1 rounded transition"
-                  >
+                  <button onClick={() => loadPuzzle(currentPuzzle)} className="btn-classic-outline text-sm px-3 py-1">
                     다시 풀기
                   </button>
                   {session && (
                     <button
                       onClick={() => { setSaveError(""); setShowSaveMenu(true); }}
-                      className={`text-sm border px-3 py-1 rounded transition ${
-                        savedFolderId
-                          ? "border-blue-500/60 text-blue-400"
-                          : "border-[#3d3a37] hover:border-blue-400 text-gray-400 hover:text-blue-400"
-                      }`}
+                      className="text-sm px-3 py-1 rounded-none border transition"
+                      style={{
+                        transitionDuration: "var(--motion-duration)",
+                        borderColor: savedFolderId ? "var(--color-gold)" : "var(--color-gold-soft)",
+                        color: savedFolderId ? "var(--color-gold)" : "var(--color-text-muted)",
+                      }}
                     >
                       {savedFolderId ? "✓ 저장됨" : "저장"}
                     </button>
                   )}
                 </div>
 
-                <div className="flex gap-3 mt-3 pt-3 border-t border-[#3d3a37]">
+                <div className="flex gap-3 mt-4 pt-4 border-t" style={{ borderColor: "var(--color-gold-soft)" }}>
                   {DIFFICULTY_OPTIONS.map((d) => {
                     const active = selectedDifficulty === d.value;
-                    const activeClass =
-                      d.value === "easy"
-                        ? "bg-green-900/40 border-green-500/60 text-green-400"
-                        : d.value === "medium"
-                        ? "bg-yellow-900/40 border-yellow-500/60 text-yellow-400"
-                        : "bg-red-900/40 border-red-500/60 text-red-400";
                     return (
                       <div key={d.value} className="flex flex-1 flex-col items-center gap-1" title={d.range}>
-                        <span className="text-[10px] text-gray-500 whitespace-nowrap">{d.range}</span>
+                        <span className="text-[10px] whitespace-nowrap" style={{ color: "var(--color-text-muted)" }}>
+                          {d.range}
+                        </span>
                         <button
                           onClick={() => selectDifficulty(d.value)}
-                          className={`w-full text-sm border px-3 py-1 rounded transition ${
-                            active
-                              ? activeClass
-                              : "border-[#3d3a37] text-gray-400 hover:text-white hover:border-white"
-                          }`}
+                          className={`w-full text-sm px-3 py-1 border transition ${active ? "filter-btn-active" : "filter-btn"}`}
                         >
                           {d.label}
                         </button>
@@ -449,14 +694,14 @@ export default function PuzzlePage() {
                   })}
                 </div>
                 {saveError && !showSaveMenu && (
-                  <p className="text-red-400 text-xs mt-2">{saveError}</p>
+                  <p className="text-red-700 text-xs mt-2">{saveError}</p>
                 )}
               </div>
 
               {!session && (
-                <p className="text-gray-500 text-sm">
+                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
                   풀이 기록을 저장하려면{" "}
-                  <Link href="/login" className="text-[#81b64c] hover:underline">
+                  <Link href="/login" style={{ color: "var(--color-gold)" }} className="hover:underline">
                     로그인
                   </Link>
                   하세요.
@@ -464,11 +709,188 @@ export default function PuzzlePage() {
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              왼쪽에서 퍼즐을 선택하세요.
+            <div className="flex flex-col items-center justify-center h-64 text-sm text-center gap-2" style={{ color: "var(--color-text-muted)" }}>
+              {isReview && reviewEmpty ? (
+                reviewCandidateCount > 0 ? (
+                  <>
+                    <p>🎉 지금 복습할 문제가 없습니다.</p>
+                    <p>약점 문제는 모두 예정된 시점까지 잘 기억하고 계세요. 나중에 다시 확인해보세요.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>아직 복습할 약점 데이터가 부족합니다.</p>
+                    <p>문제를 더 풀고 나서 다시 시도해보세요.</p>
+                  </>
+                )
+              ) : (
+                "왼쪽에서 퍼즐을 선택하세요."
+              )}
             </div>
           )}
         </div>
+
+        {/* 오답 반박 수순 재현 체스판 */}
+        {mistakeReport && activeLineReport && (
+          <div className="flex-1">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex gap-3 w-full max-w-[480px] items-start">
+                <EvalBar
+                  scoreCpWhite={customReplayFen ? customEvalCp : activeLineReport.scoreCpWhite}
+                  scoreMateWhite={customReplayFen ? customEvalMate : activeLineReport.scoreMateWhite}
+                  orientation={orientation}
+                  heightPx={480}
+                />
+                <div className="flex-1 min-w-0">
+                  <Chessboard
+                    key={`replay-${activeLine}-${replayIndex}`}
+                    options={{
+                      id: "replay-board",
+                      position: replayPosition ?? undefined,
+                      boardOrientation: orientation,
+                      ...CLASSIC_SQUARE_STYLES,
+                      boardStyle: {
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+                        width: "100%",
+                      },
+                      onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                        if (!targetSquare) return false;
+                        return onReplayDrop(sourceSquare, targetSquare);
+                      },
+                      canDragPiece: ({ piece }) =>
+                        !!replayPosition && piece.pieceType[0] === replayPosition.split(" ")[1],
+                    }}
+                  />
+                </div>
+              </div>
+
+              {replayPosition && (
+                <div
+                  className="w-full max-w-[480px] text-center text-xs font-semibold py-1.5 rounded border"
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    borderColor: "var(--color-gold-soft)",
+                    background: replayPosition.split(" ")[1] === "w" ? "var(--color-cream)" : "#1a1108",
+                    color: replayPosition.split(" ")[1] === "w" ? "#241505" : "var(--color-text-ondark)",
+                  }}
+                >
+                  {replayPosition.split(" ")[1] === "w" ? "백 차례" : "흑 차례"}
+                </div>
+              )}
+
+              {customReplayFen && customBestSan && customBestSan.length > 0 && (
+                <div
+                  className="w-full max-w-[480px] rounded-lg p-3 text-xs border"
+                  style={{
+                    background: "rgba(166, 124, 0, 0.08)",
+                    borderColor: "var(--color-gold-soft)",
+                    color: "var(--color-text)",
+                  }}
+                >
+                  <span style={{ color: "var(--color-gold)" }} className="font-semibold">
+                    실시간 엔진 추천:
+                  </span>{" "}
+                  {customBestSan[0]}
+                  {customBestSan.length > 1 && (
+                    <span style={{ color: "var(--color-text-muted)" }}> (전체: {customBestSan.join(" ")})</span>
+                  )}
+                </div>
+              )}
+
+              <div className="panel-classic w-full max-w-[480px] p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                    ◆ 엔진 추천 수순 (상위 {mistakeReport.lines.length}개)
+                  </span>
+                  <span className="text-xs" style={{ fontFamily: "var(--font-ui)", color: "var(--color-text-muted)" }}>
+                    {activeLineReport.replaySan.length > 0
+                      ? `${Math.min(replayIndex, activeLineReport.replaySan.length)} / ${activeLineReport.replaySan.length}`
+                      : ""}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2 mb-3">
+                  {mistakeReport.lines.map((line, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => { setActiveLine(idx); setReplayIndex(0); setCustomReplayFen(null); }}
+                      className="text-left px-3 py-2 rounded-lg border transition"
+                      style={{
+                        transitionDuration: "var(--motion-duration)",
+                        borderColor: idx === activeLine ? "var(--color-gold)" : "var(--color-gold-soft)",
+                        background: idx === activeLine ? "rgba(166, 124, 0, 0.1)" : "transparent",
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className="text-xs font-bold px-1.5 py-0.5 rounded shrink-0"
+                          style={{
+                            fontFamily: "var(--font-ui)",
+                            background:
+                              line.evalText.startsWith("+") || line.evalText.startsWith("내")
+                                ? "rgba(166, 124, 0, 0.18)"
+                                : "rgba(92, 31, 31, 0.14)",
+                            color:
+                              line.evalText.startsWith("+") || line.evalText.startsWith("내")
+                                ? "var(--color-gold)"
+                                : "var(--color-wine)",
+                          }}
+                        >
+                          {line.evalText}
+                        </span>
+                        <span className="text-sm leading-snug" style={{ color: "var(--color-text-muted)" }}>
+                          {line.replaySan.map((san, i) => (
+                            <span
+                              key={i}
+                              style={
+                                idx !== activeLine
+                                  ? undefined
+                                  : i === replayIndex - 1
+                                  ? { color: "var(--color-gold)", fontWeight: 700 }
+                                  : i === replayIndex
+                                  ? { color: "var(--color-text)", fontWeight: 700, textDecoration: "underline" }
+                                  : undefined
+                              }
+                            >
+                              {san}
+                              {i < line.replaySan.length - 1 ? " " : ""}
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setCustomReplayFen(null); setReplayIndex((i) => Math.max(0, i - 1)); }}
+                    disabled={replayIndex === 0}
+                    className="btn-classic-outline text-sm px-3 py-1 disabled:opacity-30"
+                  >
+                    ◀ 이전
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomReplayFen(null);
+                      setReplayIndex((i) => Math.min(activeLineReport.replayFens.length - 1, i + 1));
+                    }}
+                    disabled={replayIndex >= activeLineReport.replayFens.length - 1}
+                    className="btn-classic-outline text-sm px-3 py-1 disabled:opacity-30"
+                  >
+                    다음 ▶
+                  </button>
+                  <button
+                    onClick={() => { setCustomReplayFen(null); setReplayIndex(0); }}
+                    className="btn-classic-outline text-sm px-3 py-1"
+                  >
+                    처음부터
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 저장 모달 */}
@@ -478,16 +900,25 @@ export default function PuzzlePage() {
           onClick={() => setShowSaveMenu(false)}
         >
           <div
-            className="bg-[#262421] border border-[#3d3a37] rounded-2xl shadow-2xl p-6 w-80"
+            className="panel-classic p-6 w-80"
+            style={{ fontFamily: "var(--font-ui)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">폴더에 저장</h3>
-              <button onClick={() => setShowSaveMenu(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+              <h3 style={{ fontFamily: "var(--font-display)", color: "var(--color-gold)" }} className="text-lg">
+                폴더에 저장
+              </h3>
+              <button
+                onClick={() => setShowSaveMenu(false)}
+                style={{ color: "var(--color-text-muted)" }}
+                className="text-xl leading-none hover:text-white transition-colors"
+              >
+                ×
+              </button>
             </div>
 
             {saveError && (
-              <p className="text-red-400 text-sm mb-3">{saveError}</p>
+              <p className="text-red-700 text-sm mb-3">{saveError}</p>
             )}
 
             {folders.length > 0 ? (
@@ -496,22 +927,26 @@ export default function PuzzlePage() {
                   <button
                     key={f.id}
                     onClick={() => savePuzzle(f.id)}
-                    className={`text-left text-sm px-3 py-2.5 rounded-lg transition flex items-center gap-2 ${
-                      savedFolderId === f.id
-                        ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
-                        : "hover:bg-[#3d3a37] text-gray-300"
-                    }`}
+                    className="text-left text-sm px-3 py-2.5 rounded-lg transition flex items-center gap-2"
+                    style={{
+                      transitionDuration: "var(--motion-duration)",
+                      background: savedFolderId === f.id ? "rgba(166, 124, 0, 0.12)" : "transparent",
+                      color: savedFolderId === f.id ? "var(--color-gold)" : "var(--color-text)",
+                      border: savedFolderId === f.id ? "1px solid var(--color-gold-soft)" : "1px solid transparent",
+                    }}
                   >
                     <span>📁</span> {f.name}
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm mb-4">폴더가 없습니다. 아래에서 만들어보세요.</p>
+              <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>
+                폴더가 없습니다. 아래에서 만들어보세요.
+              </p>
             )}
 
-            <div className="border-t border-[#3d3a37] pt-4">
-              <p className="text-xs text-gray-500 mb-2">새 폴더 만들고 저장</p>
+            <div className="border-t pt-4" style={{ borderColor: "var(--color-gold-soft)" }}>
+              <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>새 폴더 만들고 저장</p>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -520,12 +955,17 @@ export default function PuzzlePage() {
                   onKeyDown={(e) => e.key === "Enter" && createFolderAndSave()}
                   placeholder="폴더 이름"
                   autoFocus={folders.length === 0}
-                  className="flex-1 bg-[#3d3a37] border border-[#57534e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#81b64c]"
+                  className="flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                  style={{
+                    background: "var(--color-bg-alt)",
+                    border: "1px solid var(--color-gold-soft)",
+                    color: "var(--color-text)",
+                  }}
                 />
                 <button
                   onClick={createFolderAndSave}
                   disabled={!newFolderName.trim()}
-                  className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white text-sm px-3 py-2 rounded-lg transition disabled:opacity-50"
+                  className="btn-classic-gold text-sm px-4 py-2 disabled:opacity-50"
                 >
                   만들기
                 </button>
@@ -535,5 +975,13 @@ export default function PuzzlePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PuzzlePage() {
+  return (
+    <Suspense fallback={null}>
+      <PuzzlePageInner />
+    </Suspense>
   );
 }

@@ -15,7 +15,17 @@ export async function GET(req: NextRequest) {
       ...(mateIn ? { mateIn } : {}),
       ...(difficulty ? { difficulty } : {}),
     },
-    select: { id: true, title: true, fen: true, moves: true, category: true, mateIn: true, difficulty: true, rating: true },
+    select: {
+      id: true,
+      title: true,
+      fen: true,
+      moves: true,
+      category: true,
+      mateIn: true,
+      difficulty: true,
+      rating: true,
+      explanation: true,
+    },
     orderBy: { createdAt: "asc" },
   });
 

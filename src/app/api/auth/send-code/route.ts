@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 import { saveCode } from "@/lib/verificationCodes";
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
+import { transporter } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();

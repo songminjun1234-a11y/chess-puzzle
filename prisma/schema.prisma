@@ -17,6 +17,9 @@ model User {
 
   solvedPuzzles SolvedPuzzle[]
   folders       Folder[]
+  solveLogs     SolveLog[]
+  bugReports    BugReport[]
+  puzzleReviews PuzzleReview[]
 }
 
 model Folder {
@@ -42,18 +45,25 @@ model FolderPuzzle {
 }
 
 model Puzzle {
-  id         String   @id @default(cuid())
-  fen        String
-  moves      String
-  difficulty String
-  rating     Int?
-  category   String   @default("fork")
-  mateIn     String?
-  title      String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  fen         String
+  moves       String
+  difficulty  String
+  rating      Int?
+  category    String   @default("fork")
+  mateIn      String?
+  themes      String?
+  title       String
+  // Human-written commentary on why the solution is best, shown alongside
+  // the engine's evaluation in the wrong-answer feedback panel.
+  explanation String?
+  createdAt   DateTime @default(now())
 
   solvedPuzzles SolvedPuzzle[]
   folderPuzzles FolderPuzzle[]
+  solveLogs     SolveLog[]
+  bugReports    BugReport[]
+  puzzleReviews PuzzleReview[]
 }
 
 model SolvedPuzzle {
@@ -67,4 +77,57 @@ model SolvedPuzzle {
   puzzle Puzzle @relation(fields: [puzzleId], references: [id])
 
   @@unique([userId, puzzleId])
+}
+
+// One row per completed solve, preserved across repeat attempts (unlike
+// SolvedPuzzle, which is upserted) so "기보 다시보기" has real history.
+model SolveLog {
+  id          String   @id @default(cuid())
+  userId      String
+  puzzleId    String
+  attempts    Int      @default(1)
+  timeSeconds Int?
+  solvedAt    DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id])
+
+  @@index([userId, solvedAt])
+}
+
+// SM-2-style spaced-repetition state, one row per user+puzzle. Updated each
+// time a puzzle is solved so the "약점 복습" queue can resurface puzzles at
+// the right time — soon after a struggle, later and later after clean solves —
+// instead of just re-showing every puzzle in a weak theme every time.
+model PuzzleReview {
+  id             String    @id @default(cuid())
+  userId         String
+  puzzleId       String
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  dueAt          DateTime  @default(now())
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id])
+
+  @@unique([userId, puzzleId])
+  @@index([userId, dueAt])
+}
+
+model BugReport {
+  id        String   @id @default(cuid())
+  userId    String?
+  puzzleId  String?
+  message   String
+  pageUrl   String?
+  status    String   @default("open") // "open" | "resolved"
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  puzzle Puzzle? @relation(fields: [puzzleId], references: [id])
+
+  @@index([status, createdAt])
 }

@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await res.json();
-  const puzzleItems: { game: { pgn: string }; puzzle: { id: string; initialPly: number; solution: string[]; rating: number } }[] =
+  const puzzleItems: { game: { pgn: string }; puzzle: { id: string; initialPly: number; solution: string[]; rating: number; themes?: string[] } }[] =
     data.puzzles ?? [];
 
   let imported = 0;
@@ -123,7 +123,16 @@ export async function POST(req: NextRequest) {
       const difficulty = ratingToDifficulty(puzzle.rating);
 
       await prisma.puzzle.create({
-        data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty, rating: puzzle.rating, category, mateIn },
+        data: {
+          title: `Lichess #${puzzle.id}`,
+          fen,
+          moves,
+          difficulty,
+          rating: puzzle.rating,
+          category,
+          mateIn,
+          themes: (puzzle.themes ?? []).join(","),
+        },
       });
       imported++;
     } catch {

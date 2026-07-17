@@ -32,46 +32,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-56px)] px-4">
-      <div className="bg-[#262421] border border-[#3d3a37] rounded-xl p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">로그인</h2>
+    <div className="flex items-center justify-center min-h-[calc(100vh-72px)] px-4">
+      <div className="panel-classic p-8 w-full max-w-md" style={{ fontFamily: "var(--font-ui)" }}>
+        <h2
+          className="text-3xl mb-6 text-center tracking-wide"
+          style={{ fontFamily: "var(--font-display)", color: "var(--color-gold)" }}
+        >
+          로그인
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-400 text-sm mb-1">이메일</label>
+            <label className="label-classic">이메일</label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
+              className="input-classic"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-400 text-sm mb-1">비밀번호</label>
+            <label className="label-classic">비밀번호</label>
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-[#3d3a37] border border-[#57534e] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#81b64c]"
+              className="input-classic"
               required
             />
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-700 text-sm">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-[#81b64c] hover:bg-[#6ba53a] shadow-[inset_0_-3px_0_rgba(0,0,0,0.25)] active:shadow-[inset_0_-1px_0_rgba(0,0,0,0.25)] active:translate-y-px text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="btn-classic-gold btn-restrained py-2 disabled:opacity-50">
             {loading ? "로그인 중..." : "로그인"}
           </button>
         </form>
 
-        <p className="text-gray-400 text-sm text-center mt-4">
+        <p className="text-sm text-center mt-4" style={{ color: "var(--color-text-muted)" }}>
           계정이 없으신가요?{" "}
-          <Link href="/register" className="text-[#81b64c] hover:underline">
+          <Link href="/register" style={{ color: "var(--color-gold)" }} className="hover:underline">
             회원가입
           </Link>
         </p>

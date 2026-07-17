@@ -82,7 +82,16 @@ export async function POST(req: NextRequest) {
     const finalMateIn = category === "checkmate" ? (mateIn ?? computeMateIn(moves)) : null;
 
     const created = await prisma.puzzle.create({
-      data: { title: `Lichess #${puzzle.id}`, fen, moves, difficulty, rating: puzzle.rating, category, mateIn: finalMateIn },
+      data: {
+        title: `Lichess #${puzzle.id}`,
+        fen,
+        moves,
+        difficulty,
+        rating: puzzle.rating,
+        category,
+        mateIn: finalMateIn,
+        themes: (puzzle.themes ?? []).join(","),
+      },
     });
 
     return NextResponse.json({ success: true, imported: 1, puzzle: created });
@@ -135,6 +144,7 @@ export async function POST(req: NextRequest) {
             rating,
             category,
             mateIn: finalMateIn,
+            themes: themes.join(","),
           },
         });
         imported.push(lichessId);
