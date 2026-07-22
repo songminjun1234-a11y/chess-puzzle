@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "비밀번호는 6자 이상이어야 합니다." }, { status: 400 });
   }
 
-  const result = verifyCode(`reset:${email}`, code);
+  const result = await verifyCode(`reset:${email}`, code);
   if (result === "expired") return NextResponse.json({ error: "인증번호가 만료되었습니다. 다시 발송해주세요." }, { status: 400 });
   if (result === "invalid") return NextResponse.json({ error: "인증번호가 다릅니다." }, { status: 400 });
 

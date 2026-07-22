@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ error: "이메일을 입력하세요." }, { status: 400 });
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  saveCode(email, code);
+  await saveCode(email, code);
 
   await transporter.sendMail({
     from: `"체스 퍼즐" <${process.env.EMAIL_USER}>`,

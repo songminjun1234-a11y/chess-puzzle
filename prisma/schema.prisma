@@ -22,6 +22,15 @@ model User {
   puzzleReviews PuzzleReview[]
 }
 
+// Email verification codes for registration and password reset. Stored in
+// the DB (not server memory) since Vercel's serverless functions don't share
+// process memory across invocations/instances.
+model VerificationCode {
+  email     String   @id
+  code      String
+  expiresAt DateTime
+}
+
 model Folder {
   id        String   @id @default(cuid())
   userId    String

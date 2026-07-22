@@ -6,7 +6,7 @@ import { verifyCode } from "@/lib/verificationCodes";
 export async function POST(req: NextRequest) {
   const { email, password, name, code } = await req.json();
 
-  const result = verifyCode(email, code);
+  const result = await verifyCode(email, code);
   if (result === "expired") return NextResponse.json({ error: "인증번호가 만료되었습니다. 다시 발송해주세요." }, { status: 400 });
   if (result === "invalid") return NextResponse.json({ error: "인증번호가 다릅니다." }, { status: 400 });
 

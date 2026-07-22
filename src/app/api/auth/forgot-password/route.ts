@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   // endpoint can't be used to check which emails are registered.
   if (user) {
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    saveCode(`reset:${email}`, code);
+    await saveCode(`reset:${email}`, code);
     await transporter.sendMail({
       from: `"체스 퍼즐" <${process.env.EMAIL_USER}>`,
       to: email,

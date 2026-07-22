@@ -1,15 +1,22 @@
-type CodeEntry = { code: string; expires: number };
-const store = new Map<string, CodeEntry>();
+import { prisma } from "./prisma";
 
-export function saveCode(email: string, code: string) {
-  store.set(email, { code, expires: Date.now() + 5 * 60 * 1000 });
+export async function saveCode(email: string, code: string) {
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  await prisma.verificationCode.upsert({
+    where: { email },
+    update: { code, expiresAt },
+    create: { email, code, expiresAt },
+  });
 }
 
-export function verifyCode(email: string, code: string): "ok" | "expired" | "invalid" {
-  const entry = store.get(email);
+export async function verifyCode(email: string, code: string): Promise<"ok" | "expired" | "invalid"> {
+  const entry = await prisma.verificationCode.findUnique({ where: { email } });
   if (!entry) return "invalid";
-  if (Date.now() > entry.expires) { store.delete(email); return "expired"; }
+  if (Date.now() > entry.expiresAt.getTime()) {
+    await prisma.verificationCode.delete({ where: { email } });
+    return "expired";
+  }
   if (entry.code !== code) return "invalid";
-  store.delete(email);
+  await prisma.verificationCode.delete({ where: { email } });
   return "ok";
 }
