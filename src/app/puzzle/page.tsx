@@ -10,6 +10,7 @@ import { analyzeMultiPv } from "@/lib/stockfishClient";
 import { buildMistakeReport, type MistakeReport } from "@/lib/mistakeExplanation";
 import { EvalBar } from "@/components/EvalBar";
 import { playMoveSound } from "@/lib/sound";
+import { TACTIC_CATEGORIES, MATE_IN_OPTIONS } from "@/lib/categories";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -33,21 +34,6 @@ const DIFFICULTY_OPTIONS = [
   { value: "medium", label: "보통", range: "레이팅 1300~1799" },
   { value: "hard", label: "어려움", range: "레이팅 1800 이상" },
 ];
-
-const TACTIC_CATEGORIES = [
-  { value: "fork", label: "포크" },
-  { value: "double_check", label: "더블체크" },
-  { value: "skewer", label: "스큐어" },
-  { value: "discovered", label: "디스커버드" },
-  { value: "pin", label: "핀" },
-  { value: "sacrifice", label: "희생" },
-  { value: "defender_removal", label: "수비수 제거" },
-  { value: "trap", label: "트랩" },
-  { value: "zugzwang", label: "추크 추방" },
-  { value: "zwischenzug", label: "사잇수" },
-];
-
-const MATE_IN_OPTIONS = ["1", "2", "3", "4", "5+"];
 
 const CATEGORY_LABEL: Record<string, string> = {
   ...Object.fromEntries(TACTIC_CATEGORIES.map((c) => [c.value, c.label])),
@@ -97,12 +83,13 @@ function PuzzlePageInner() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const isReview = searchParams.get("review") === "1";
+  const reviewTheme = searchParams.get("theme");
   const [weakThemes, setWeakThemes] = useState<{ key: string; label: string; missRate: number }[]>([]);
   const [reviewEmpty, setReviewEmpty] = useState(false);
   const [reviewCandidateCount, setReviewCandidateCount] = useState(0);
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedMateIn, setSelectedMateIn] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get("category") ?? "all");
+  const [selectedMateIn, setSelectedMateIn] = useState(() => searchParams.get("mateIn") ?? "all");
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle | null>(null);
   const [game, setGame] = useState(new Chess());
@@ -149,7 +136,10 @@ function PuzzlePageInner() {
     }
     if (isReview) {
       setReviewEmpty(false);
-      fetch("/api/puzzles/review")
+      const url = reviewTheme
+        ? `/api/puzzles/review?theme=${encodeURIComponent(reviewTheme)}`
+        : "/api/puzzles/review";
+      fetch(url)
         .then((r) => r.json())
         .then((data: {
           puzzles: Puzzle[];
@@ -179,7 +169,7 @@ function PuzzlePageInner() {
         const next = pickRandomPuzzle(data);
         if (next) loadPuzzle(next);
       });
-  }, [selectedCategory, selectedMateIn, selectedDifficulty, isReview]);
+  }, [selectedCategory, selectedMateIn, selectedDifficulty, isReview, reviewTheme]);
 
   const selectDifficulty = (diff: string) => {
     setSelectedDifficulty((prev) => (prev === diff ? "all" : diff));

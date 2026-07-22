@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { computeThemeBreakdown } from "@/lib/weaknesses";
+import { buildSkillTree } from "@/lib/skillTree";
 
 const TREND_DAYS = 30;
 
@@ -22,6 +23,12 @@ export async function GET() {
     include: { puzzle: { select: { category: true, mateIn: true, themes: true } } },
   });
   const themeBreakdown = computeThemeBreakdown(solvedRecords);
+
+  const reviewRecords = await prisma.puzzleReview.findMany({
+    where: { userId },
+    select: { dueAt: true, puzzle: { select: { category: true, mateIn: true } } },
+  });
+  const skillTree = buildSkillTree(solvedRecords, reviewRecords);
 
   const since = new Date(Date.now() - TREND_DAYS * 24 * 60 * 60 * 1000);
   const logs = await prisma.solveLog.findMany({
@@ -51,5 +58,5 @@ export async function GET() {
     });
   }
 
-  return NextResponse.json({ themeBreakdown, dailyTrend });
+  return NextResponse.json({ themeBreakdown, dailyTrend, skillTree });
 }

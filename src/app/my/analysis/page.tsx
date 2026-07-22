@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -14,6 +12,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { SkillTree } from "@/components/SkillTree";
+import type { SkillNode } from "@/lib/skillTree";
 
 type ThemeBreakdown = {
   key: string;
@@ -29,26 +29,9 @@ type DailyTrend = {
   count: number;
 };
 
-const MISS_COLOR = "#e0685a";
 const ACCURACY_COLOR = "#81b64c";
 const GRID_COLOR = "#3d3a37";
 const AXIS_COLOR = "#9ca3af";
-
-function MissRateTooltip({ active, payload }: { active?: boolean; payload?: { payload: ThemeBreakdown }[] }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div
-      className="rounded-lg border px-3 py-2 text-xs"
-      style={{ background: "#1e1c1a", borderColor: GRID_COLOR, color: "var(--color-text)" }}
-    >
-      <div className="font-semibold mb-1">{d.label}</div>
-      <div style={{ color: "var(--color-text-muted)" }}>
-        {d.total}문제 중 {d.struggled}번 여러 번 시도 · 오답률 {Math.round(d.missRate * 100)}%
-      </div>
-    </div>
-  );
-}
 
 function AccuracyTooltip({ active, payload, label }: { active?: boolean; payload?: { payload: DailyTrend }[]; label?: string }) {
   if (!active || !payload?.length) return null;
@@ -77,6 +60,7 @@ export default function AnalysisPage() {
   const { status } = useSession();
   const [themeBreakdown, setThemeBreakdown] = useState<ThemeBreakdown[]>([]);
   const [dailyTrend, setDailyTrend] = useState<DailyTrend[]>([]);
+  const [skillTree, setSkillTree] = useState<SkillNode[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -86,6 +70,7 @@ export default function AnalysisPage() {
         .then((data) => {
           setThemeBreakdown(data.themeBreakdown ?? []);
           setDailyTrend(data.dailyTrend ?? []);
+          setSkillTree(data.skillTree ?? []);
           setLoading(false);
         });
     }
@@ -123,7 +108,7 @@ export default function AnalysisPage() {
 
       {!loading && themeBreakdown.some((t) => t.missRate > 0) && (
         <Link href="/puzzle?review=1" className="btn-classic-gold inline-block px-5 py-2 text-sm mb-8">
-          🔁 약점 복습하기
+          🔁 전체 약점 복습하기
         </Link>
       )}
 
@@ -133,47 +118,15 @@ export default function AnalysisPage() {
         </p>
       ) : (
         <div className="flex flex-col gap-8">
-          {/* 테마별 오답률 */}
+          {/* 스킬 트리 */}
           <div className="panel-classic p-5">
             <h2 className="text-sm font-medium mb-1" style={{ color: "var(--color-text)" }}>
-              전술 유형별 오답률
+              전술 스킬 트리
             </h2>
-            <p className="text-xs mb-4" style={{ color: "var(--color-text-muted)" }}>
-              여러 번 시도한 비율이 높을수록 그 유형에 약합니다 (최소 2문제 이상 풀어본 유형만 표시)
+            <p className="text-xs mb-5" style={{ color: "var(--color-text-muted)" }}>
+              🔒 시작 전 · 색이 있으면 도전한 스킬입니다. 시계 아이콘은 복습 기한이 지났다는 뜻이에요. 클릭하면 바로 연습할 수 있습니다.
             </p>
-            {themeBreakdown.length === 0 ? (
-              <p className="text-sm py-8 text-center" style={{ color: "var(--color-text-muted)" }}>
-                아직 분석하기엔 데이터가 부족합니다. 문제를 더 풀어보세요.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(200, themeBreakdown.length * 40)}>
-                <BarChart
-                  data={themeBreakdown.map((t) => ({ ...t, missRatePct: Math.round(t.missRate * 100) }))}
-                  layout="vertical"
-                  margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
-                >
-                  <CartesianGrid horizontal={false} stroke={GRID_COLOR} />
-                  <XAxis
-                    type="number"
-                    domain={[0, 100]}
-                    tick={{ fill: AXIS_COLOR, fontSize: 12 }}
-                    axisLine={{ stroke: GRID_COLOR }}
-                    tickLine={false}
-                    unit="%"
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={130}
-                    tick={{ fill: AXIS_COLOR, fontSize: 12 }}
-                    axisLine={{ stroke: GRID_COLOR }}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<MissRateTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                  <Bar dataKey="missRatePct" fill={MISS_COLOR} radius={[0, 4, 4, 0]} maxBarSize={18} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            <SkillTree nodes={skillTree} />
           </div>
 
           {/* 최근 30일 정답률 추이 */}
