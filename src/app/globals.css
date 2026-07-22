@@ -31,10 +31,10 @@
   --color-success-bg: #1f3a24;
   --color-success-border: #4a7a52;
 
-  /* ---- Typography: plain system sans, no serif branding ---- */
-  --font-display: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
-  --font-body: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
-  --font-ui: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  /* ---- Typography: Noto Sans KR, self-hosted via next/font ---- */
+  --font-display: var(--font-noto-kr), ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-body: var(--font-noto-kr), ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
+  --font-ui: var(--font-noto-kr), ui-sans-serif, system-ui, -apple-system, Arial, sans-serif;
 
   /* ---- Motion: quick, standard UI timing ---- */
   --motion-duration: 0.15s;
