@@ -51,7 +51,6 @@ export async function GET() {
       rating: true,
       explanation: true,
     },
-    take: MAX_PUZZLES * 3, // over-fetch, then narrow to what's actually due
   });
 
   const reviews = await prisma.puzzleReview.findMany({
@@ -67,6 +66,13 @@ export async function GET() {
     const dueAt = dueAtByPuzzle.get(p.id);
     return !dueAt || dueAt <= now;
   });
+
+  // Shuffle before capping so every due puzzle has a chance to surface,
+  // instead of always the same fixed prefix of the candidate list.
+  for (let i = due.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [due[i], due[j]] = [due[j], due[i]];
+  }
 
   return NextResponse.json({
     puzzles: due.slice(0, MAX_PUZZLES),
